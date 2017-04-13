@@ -1,23 +1,44 @@
 class Item
-	
-end
-
-class Air < Item
-	def identify
-		return "nothing"
-	end
-	
 	def getName
-		return "nothing"
+		return @name
 	end
-
+	def identify
+		return @identifier
+	end
 	def liftable?
 		return false
 	end
-
 	def passable?
 		return true
 	end
+	
+	def getAttack
+		return 0
+	end
+end
+
+class Tool < Item
+	def initialize(name, identifier, attack)
+		@name = name
+		@identifier = identifier
+		@attack = attack
+	end
+
+	def liftable?
+		return true
+	end
+
+	def getAttack
+		return @attack
+	end
+end
+
+class Air < Item
+	def initialize
+		@name = "nothing"
+		@identifier = "nothing"
+	end
+	
 end
 class Sign < Item
 	def initialize(message)
@@ -30,21 +51,6 @@ class Sign < Item
 		puts "The sign reads, \"" + @message + "\""
 	end
 	
-	def identify
-		return @identifier
-	end
-
-	def getName
-		return @name
-	end
-
-	def liftable?
-		return false
-	end
-	
-	def passable?
-		return true
-	end
 end
 
 class Door < Item
@@ -54,18 +60,6 @@ class Door < Item
 		@identifier = "a door"
 	end
 	
-	def getName
-		return @name
-	end
-
-	def identify
-		return @identifier
-	end
-
-	def liftable?
-		return false
-	end
-
 	def passable?
 		return @opened
 	end
@@ -85,27 +79,13 @@ class NPC < Item
 	def initialize(dialouge, name)
 		@dialouge = dialouge
 		@name = name
+		@identifier = name
 	end
 
 	def speak
 		puts @dialouge
 	end
 	
-	def identify
-		return @name
-	end
-	
-	def getName
-		return @name
-	end
-
-	def liftable?
-		return false
-	end
-
-	def passable?
-		return true
-	end
 end
 
 class Wall < Item
@@ -114,21 +94,142 @@ class Wall < Item
 		@identifier = "a wall"
 	end
 
-	def identify
-		return @identifier
-	end
-
-	def liftable?
-		return false
-	end
-
-	def getName
-		return false
-	end
 	
 	def passable?
 		return false
 	end
+end
+
+#Trivia question for monster bonus attack.
+class Question
+	def initialize(question, answer)
+		@question = question
+		@answer = answer
+	end
+	def checkAnswer(answer)
+		return answer.down.eql? @answer.down
+	end
+
+	def getQuestion
+		return @question
+	end
+end
+
+class Monster < Item
+	def initialize(name, identifier, hp, attack, reward, question)
+		@name = name
+		@identifier = identifier
+		@hp = hp
+		@attach = attack
+		@question = question
+	end
+
+	def getAttack(x)
+		return @attack
+	end
+
+	def heal(x)
+		@hp = @hp + x
+	end
+
+	def hurt(x)
+		@hp = @hp - x
+	end
+	def getHealth
+		return @hp
+	end
+	def getQuestion
+		return @question
+	end
+
+	def isDead?
+		return @hp<=0
+	end
+
+end
+
+#Used only for battling and inventory. Does not show up on map.
+class Player
+	def initialize
+		@inventory = []
+		@hp = 100
+		
+	end
+	def heal(x)
+		@hp = @hp + x
+	end
+	
+	def hurt(x)
+		@hp = @hp - x
+	end
+
+	def give(x)
+		@inventory.push(x)
+	end
+
+	def getInventory
+		return @inventory
+	end
+	
+	def getHealth
+		return @hp
+	end
+	
+	def isDead?
+		return @hp<=0
+	end
+end
+
+def battle (m, p)
+	puts "You are now in a battle with the monster " + m.getName + "!"
+	return battleLoop(m, p, 0)
+end
+
+#Battles monster m with player p. Returns 0 if monster won, returns 1 if player won.
+def battleLoop (m, p, round)
+	puts "Your health: " + p.getHealth + " Monster health: " + m.getHealth
+	if p.getInventory.length != 0
+		for x in p.getInventory
+                	puts "Item " + x.to_s + ": " + p.getInventory[x].identify + "(+" + p.getInventory[x].attack + " damage)"
+        	end
+		puts "Please select an item by typing it's number."
+		weapon = p.getInventory[gets.chomp.to_i].getAttack
+		bonus = false
+	else
+		"There is nothing in your inventory to use as a weapon.."
+		weapon = 0
+	end
+	if round == 0
+		puts "If you get this trivia question right, you get a bonus attack."
+		puts m.getQuestion.getQuestion
+		if checkAnswer(gets.chomp)
+			bonus = true
+		end	
+	end
+
+	#MonsterDamage is damage dealt BY monster, playerDamage is damage dealt TO monster.
+	monsterDamage = (m.attack-rand(m.attack))
+	playerDamage = (10+weapon-rand(10))
+	if bonus
+		playerDamage = playerDamage*2
+	end
+	puts "Damage dealt by monster: " + monsterDamage.to_s
+	puts "Damage dealt to monster: " + playerDamage.to_s
+	p.hurt(monsterDamage)
+	puts "Your health: " + p.getHealth
+	m.hurt(playerDamage)
+	puts "Monster health: " + m.getHealth
+	if p.isDead?
+		puts "You died!"
+		return 0
+	end
+
+	if monster.isDead?
+		puts "You win!"
+		return 1
+	end
+	return battleloop(m, p, round + 1)
+	
 end 
 playerx = 10
 playery = 1
@@ -136,12 +237,15 @@ MAP_HEIGHT = 20
 MAP_WIDTH = 20
 
 puts "Talk to Steve for instructions. (Hint: You are right next to him!)"
-map = Array.new(MAP_HEIGHT) { Array.new(MAP_WIDTH) { Air.new } }
+map = Array.new(MAP_HEIGHT) { Array.new(MAP_WIDTH+1) { Air.new } }
 x = 0
 y = 0
 
-map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! It seems you have figured out how to talk to people. There is a sign two units south of you. To move, type \"move \"south\". When you are close enough to see the sign, read it.", "steve")
+player = Player.new
+map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! There is a sign two units south of you. To move, type \"move \"south\". When you are close enough to see the sign, read it.", "steve")
 map[10][3] = Sign.new("Good job! Can you open the door behind this sign?")
+map[10][5] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a small knife directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
+map[11][5] = Tool.new("knife", "a knife", 3)
 
 for i in 0..MAP_WIDTH-1
 #	puts "creating a wall at " + i.to_s
@@ -167,11 +271,16 @@ def findObject(name, x, y, map)
 	return nil
 end
 
-def gameloop (playerx, playery, map)
+def gameloop (playerx, playery, map, player)
 	puts "Your x: " + playerx.to_s + ". Your y: " + playery.to_s
 	input = gets.chomp.downcase
 	recognized = false
-
+	for x in 0..MAP_HEIGHT
+		for y in 0..MAP_WIDTH
+	#		puts "X: " + x.to_s + " Y: " + y.to_s + " " + map[x][y].getName
+		end
+	end
+ 
 	if input.eql? "move north"
 		if playery != 0 and map[playerx][playery-1].passable?
 			playery = playery - 1
@@ -258,6 +367,22 @@ def gameloop (playerx, playery, map)
                 recognized = true
         end
 
+	if input.include? "pick up"
+		obj = input[input.index("pick up")+8..input.length]
+		coords = findObject(obj, playerx, playery, map)
+		if coords != nil
+			if map[coords[0]][coords[1]].liftable?
+				player.give(map[coords[0]][coords[1]])
+				map[coords[0]][coords[1]] = Air.new
+				puts "Picked up object succesfully."
+			else
+				puts "Object is too heavy to lift!"
+			end
+		else
+			puts obj + " could not be found. Are you close enough to it?"
+		end
+		recognized = true
+	end
 #for debugging:
 =begin
 	
@@ -275,8 +400,8 @@ def gameloop (playerx, playery, map)
 	puts "To the south of you there is " + map[playerx][playery+1].identify unless playery == MAP_HEIGHT or map[playerx][playery+1].identify.eql?("nothing")
 	puts "To the east of you there is " + map[playerx+1][playery].identify unless playerx == MAP_WIDTH or map[playerx+1][playery].identify.eql?("nothing")
 	#puts map
-	gameloop(playerx, playery, map)
+	gameloop(playerx, playery, map, player)
 end
 
-gameloop(playerx, playery, map)
+gameloop(playerx, playery, map, player)
 
