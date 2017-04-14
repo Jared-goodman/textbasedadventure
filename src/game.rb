@@ -107,24 +107,24 @@ class Question
 		@answer = answer
 	end
 	def checkAnswer(answer)
-		return answer.down.eql? @answer.down
+		return answer.downcase.eql? @answer.downcase
 	end
 
 	def getQuestion
 		return @question
-	end
+vv	end
 end
 
 class Monster < Item
-	def initialize(name, identifier, hp, attack, reward, question)
+	def initialize(name, hp, attack, reward, question)
 		@name = name
-		@identifier = identifier
 		@hp = hp
-		@attach = attack
+		@attack = attack
 		@question = question
+		@reward = reward
 	end
 
-	def getAttack(x)
+	def getAttack()
 		return @attack
 	end
 
@@ -144,6 +144,12 @@ class Monster < Item
 
 	def isDead?
 		return @hp<=0
+	end
+	def identify
+		return "a monster"
+	end
+	def getReward
+		return @reward
 	end
 
 end
@@ -178,6 +184,9 @@ class Player
 	def isDead?
 		return @hp<=0
 	end
+	def getName
+		return "you"
+	end
 end
 
 def battle (m, p)
@@ -185,15 +194,25 @@ def battle (m, p)
 	return battleLoop(m, p, 0)
 end
 
+def touching?(playerx, playery, map, obj)
+	return true if playerx != 0 and map[playerx-1][playery].identify.eql? obj
+	return true if playerx != 20 and map[playerx+1][playery].identify.eql? obj
+	return true if playery != 0 and map[playerx][playery-1].identify.eql? obj
+	return true if playery != 20 and map[playerx][playery+1].identify.eql? obj
+	puts "touching method returned false"
+	return false
+end
+
 #Battles monster m with player p. Returns 0 if monster won, returns 1 if player won.
 def battleLoop (m, p, round)
-	puts "Your health: " + p.getHealth + " Monster health: " + m.getHealth
+	puts "Your health: " + p.getHealth.to_s + " Monster health: " + m.getHealth.to_s
 	if p.getInventory.length != 0
-		for x in p.getInventory
-                	puts "Item " + x.to_s + ": " + p.getInventory[x].identify + "(+" + p.getInventory[x].attack + " damage)"
+		for x in 0..p.getInventory.length-1
+			puts "Item " + (x+1).to_s + ": " + (p.getInventory[x].identify) + "(+" + (p.getInventory[x].getAttack.to_s) + " damage)"
+			
         	end
 		puts "Please select an item by typing it's number."
-		weapon = p.getInventory[gets.chomp.to_i].getAttack
+		weapon = p.getInventory[gets.chomp.to_i-1].getAttack
 		bonus = false
 	else
 		"There is nothing in your inventory to use as a weapon.."
@@ -202,13 +221,13 @@ def battleLoop (m, p, round)
 	if round == 0
 		puts "If you get this trivia question right, you get a bonus attack."
 		puts m.getQuestion.getQuestion
-		if checkAnswer(gets.chomp)
+		if m.getQuestion.checkAnswer(gets.chomp)
 			bonus = true
 		end	
 	end
 
 	#MonsterDamage is damage dealt BY monster, playerDamage is damage dealt TO monster.
-	monsterDamage = (m.attack-rand(m.attack))
+	monsterDamage = (m.getAttack-rand(m.getAttack))
 	playerDamage = (10+weapon-rand(10))
 	if bonus
 		playerDamage = playerDamage*2
@@ -216,26 +235,25 @@ def battleLoop (m, p, round)
 	puts "Damage dealt by monster: " + monsterDamage.to_s
 	puts "Damage dealt to monster: " + playerDamage.to_s
 	p.hurt(monsterDamage)
-	puts "Your health: " + p.getHealth
+	puts "Your health: " + p.getHealth.to_s
 	m.hurt(playerDamage)
-	puts "Monster health: " + m.getHealth
+	puts "Monster health: " + m.getHealth.to_s
 	if p.isDead?
 		puts "You died!"
 		return 0
 	end
 
-	if monster.isDead?
+	if m.isDead?
 		puts "You win!"
 		return 1
 	end
-	return battleloop(m, p, round + 1)
+	return battleLoop(m, p, round + 1)
 	
 end 
 playerx = 10
 playery = 1
 MAP_HEIGHT = 20
 MAP_WIDTH = 20
-
 puts "Talk to Steve for instructions. (Hint: You are right next to him!)"
 map = Array.new(MAP_HEIGHT) { Array.new(MAP_WIDTH+1) { Air.new } }
 x = 0
@@ -244,15 +262,19 @@ y = 0
 player = Player.new
 map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! There is a sign two units south of you. To move, type \"move \"south\". When you are close enough to see the sign, read it.", "steve")
 map[10][3] = Sign.new("Good job! Can you open the door behind this sign?")
-map[10][5] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a small knife directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
-map[11][5] = Tool.new("knife", "a knife", 3)
+map[10][5] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a sharp rock directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
+map[11][5] = Tool.new("rock", "a rock", 3)
 
 for i in 0..MAP_WIDTH-1
 #	puts "creating a wall at " + i.to_s
 	map[i][4] = Wall.new
+	map[i][6] = Wall.new
 end
 map[10][4] = Door.new(false)
+map[10][6] = Door.new(false)
+#name, hp, attack, reward, question
 
+map[10][7] = Monster.new("Ed The Monster",  80, 5, Tool.new("sword", "a sword", 10), Question.new("How many suns are there in the sky on a clear day?", "1"))
 #finds a nearby object that matches the name. Returns coordinates in an array of [x, y]
 def findObject(name, x, y, map)
 #	puts map[x][y].identify
@@ -271,8 +293,27 @@ def findObject(name, x, y, map)
 	return nil
 end
 
+def findObjectIdentifier(name, x, y, map)
+	 if map[x][y].getName.eql? name
+#               puts x
+#               puts y
+                return [x, y]
+        end
+        return [x+1, y] if map[x+1][y].identify.eql? name
+        return [x-1, y] if map[x-1][y].identify.eql? name
+        return [x, y+1] if map[x][y+1].identify.eql? name
+        return [x, y-1] if map[x][y-1].identify.eql? name
+#       puts "returning nil"
+        return nil
+end
+
 def gameloop (playerx, playery, map, player)
 	puts "Your x: " + playerx.to_s + ". Your y: " + playery.to_s
+	puts "Your inventory:" unless player.getInventory.length == 0
+	for x in 0..player.getInventory.length-1
+		puts "Item " + (x+1).to_s + ": " + player.getInventory[x].identify
+	end
+
 	input = gets.chomp.downcase
 	recognized = false
 	for x in 0..MAP_HEIGHT
@@ -383,6 +424,8 @@ def gameloop (playerx, playery, map, player)
 		end
 		recognized = true
 	end
+	
+	
 #for debugging:
 =begin
 	
@@ -393,6 +436,22 @@ def gameloop (playerx, playery, map, player)
 		recognized = true
 	end
 =end	
+	if touching?(playerx, playery, map, "a monster")
+		puts "touching monster"
+		obj = findObjectIdentifier("a monster", playerx, playery, map)
+		if obj != nil
+			#puts "obj is " + obj.to_s
+			winner = battle(map[obj[0]][obj[1]], player)
+			if winner == 0
+				puts "You died!"
+				abort
+			end
+#			puts map[obj[0]][obj[1]].getName
+#			puts map[obj[0]][obj[1]].getReward.getName
+			puts map[obj[0]][obj[1]].getName + " dropped " + map[obj[0]][obj[1]].getReward.identify + "!"
+			map[obj[0]][obj[1]] = map[obj[0]][obj[1]].getReward
+		end
+	end
 	puts "unrecognized command" unless recognized == true
 	puts "You are standing at " + map[playerx][playery].identify unless map[playerx][playery].identify.eql?("nothing")
 	puts "To the north of you there is " + map[playerx][playery-1].identify unless playery == 0 or map[playerx][playery-1].identify.eql?("nothing")
@@ -404,4 +463,3 @@ def gameloop (playerx, playery, map, player)
 end
 
 gameloop(playerx, playery, map, player)
-
