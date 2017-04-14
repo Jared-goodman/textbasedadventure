@@ -6,9 +6,13 @@ To install, clone this GitHub repository or download the ZIP and extract. Go to 
 In other words, this is instalation on OSX (run this in terminal):
 
 `brew install ruby`
+
 `brew install git`
+
 `git clone https://github.com/bobmonkeywarts/textbasedadventure`
+
 `cd textbasedadventure/src`
+
 `ruby game.rb`
 
 The instalation is the same on Linux but you replace `brew` with your package manager (e.g. apt, yum, pacman)
