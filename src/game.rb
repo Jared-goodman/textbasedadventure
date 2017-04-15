@@ -107,12 +107,17 @@ class Question
 		@answer = answer
 	end
 	def checkAnswer(answer)
-		return answer.downcase.eql? @answer.downcase
+		toReturn = answer.downcase.eql? @answer.downcase
+		if toReturn
+			puts "Correct! You get two attacks this turn."
+		else
+			puts "Wrong! The answer was " + @answer
+		end
 	end
 
 	def getQuestion
 		return @question
-vv	end
+	end
 end
 
 class Monster < Item
@@ -199,7 +204,7 @@ def touching?(playerx, playery, map, obj)
 	return true if playerx != 20 and map[playerx+1][playery].identify.eql? obj
 	return true if playery != 0 and map[playerx][playery-1].identify.eql? obj
 	return true if playery != 20 and map[playerx][playery+1].identify.eql? obj
-	puts "touching method returned false"
+	#puts "touching method returned false"
 	return false
 end
 
@@ -262,19 +267,19 @@ y = 0
 player = Player.new
 map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! There is a sign two units south of you. To move, type \"move \"south\". When you are close enough to see the sign, read it.", "steve")
 map[10][3] = Sign.new("Good job! Can you open the door behind this sign?")
-map[10][5] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a sharp rock directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
-map[11][5] = Tool.new("rock", "a rock", 3)
+map[10][7] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a sharp rock directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
+map[11][6] = Tool.new("rock", "a rock", 3)
 
 for i in 0..MAP_WIDTH-1
 #	puts "creating a wall at " + i.to_s
 	map[i][4] = Wall.new
-	map[i][6] = Wall.new
+	map[i][7] = Wall.new
 end
 map[10][4] = Door.new(false)
-map[10][6] = Door.new(false)
+map[10][7] = Door.new(false)
 #name, hp, attack, reward, question
 
-map[10][7] = Monster.new("Ed The Monster",  80, 5, Tool.new("sword", "a sword", 10), Question.new("How many suns are there in the sky on a clear day?", "1"))
+map[10][8] = Monster.new("Ed The Monster",  80, 5, Tool.new("sword", "a sword", 10), Question.new("How many suns are there in the sky on a clear day?", "1"))
 #finds a nearby object that matches the name. Returns coordinates in an array of [x, y]
 def findObject(name, x, y, map)
 #	puts map[x][y].identify
@@ -316,11 +321,11 @@ def gameloop (playerx, playery, map, player)
 
 	input = gets.chomp.downcase
 	recognized = false
-	for x in 0..MAP_HEIGHT
-		for y in 0..MAP_WIDTH
+#	I need to look like im typing in science class so im typing this comment the instruments carried by radiosonds something something temperature something something direction for x in 0..MAP_HEIGHT
+#		for y in 0..MAP_WIDTH
 	#		puts "X: " + x.to_s + " Y: " + y.to_s + " " + map[x][y].getName
-		end
-	end
+#		end
+#	end
  
 	if input.eql? "move north"
 		if playery != 0 and map[playerx][playery-1].passable?
@@ -437,7 +442,7 @@ def gameloop (playerx, playery, map, player)
 	end
 =end	
 	if touching?(playerx, playery, map, "a monster")
-		puts "touching monster"
+#		puts "touching monster"
 		obj = findObjectIdentifier("a monster", playerx, playery, map)
 		if obj != nil
 			#puts "obj is " + obj.to_s
