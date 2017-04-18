@@ -105,6 +105,7 @@ class Question
 	def initialize(question, answer)
 		@question = question
 		@answer = answer
+		@checked = false
 	end
 	def checkAnswer(answer)
 		toReturn = answer.downcase.eql? @answer.downcase
@@ -113,10 +114,15 @@ class Question
 		else
 			puts "Wrong! The answer was " + @answer
 		end
+		@checked = true
 	end
 
 	def getQuestion
 		return @question
+	end
+
+	def getChecked
+		return @checked
 	end
 end
 
@@ -155,6 +161,17 @@ class Monster < Item
 	end
 	def getReward
 		return @reward
+	end
+	def useQuestion
+		for x in @question
+			if not x.getChecked
+				puts "If you get this trivia question right, you get a bonus attack!"
+				puts x.getQuestion
+				return x.checkAnswer(gets.chomp)
+				break
+			end
+			return false
+		end
 	end
 
 end
@@ -207,6 +224,20 @@ def touching?(playerx, playery, map, obj)
 	#puts "touching method returned false"
 	return false
 end
+def getnum(inventory)
+	input = gets.chomp
+	rope = "0123456789"
+	for x in 0..input.length-1
+		if not rope.include?input[x]
+			puts "Please type in a number."
+			return getnum(inventory)
+		end
+		if input.to_i>inventory.length-1 or input.to_i<=0
+			puts "Please select an item from the list."
+		end
+	end
+	return input
+end
 
 #Battles monster m with player p. Returns 0 if monster won, returns 1 if player won.
 def battleLoop (m, p, round)
@@ -217,21 +248,15 @@ def battleLoop (m, p, round)
 			
         	end
 		puts "Please select an item by typing it's number."
-		weapon = p.getInventory[gets.chomp.to_i-1].getAttack
+		
+		weapon = p.getInventory[getnum(p.getInventory).to_i-1].getAttack
 		bonus = false
 	else
 		"There is nothing in your inventory to use as a weapon.."
 		weapon = 0
 	end
-	if round == 0
-		puts "If you get this trivia question right, you get a bonus attack."
-		puts m.getQuestion.getQuestion
-		if m.getQuestion.checkAnswer(gets.chomp)
-			bonus = true
-		end	
-	end
-
-	#MonsterDamage is damage dealt BY monster, playerDamage is damage dealt TO monster.
+	bonus = m.useQuestion()
+	#monsterDamage is damage dealt BY monster, playerDamage is damage dealt TO monster.
 	monsterDamage = (m.getAttack-rand(m.getAttack))
 	playerDamage = (10+weapon-rand(10))
 	if bonus
@@ -279,7 +304,7 @@ map[10][4] = Door.new(false)
 map[10][7] = Door.new(false)
 #name, hp, attack, reward, question
 
-map[10][8] = Monster.new("Ed The Monster",  80, 5, Tool.new("sword", "a sword", 10), Question.new("How many suns are there in the sky on a clear day?", "1"))
+map[10][8] = Monster.new("Ed The Monster",  80, 5, Tool.new("sword", "a sword", 10), [Question.new("How many suns are there in the sky on a clear day?", "1"), Question.new("What is the name of the developer of this game?", "jared")])
 #finds a nearby object that matches the name. Returns coordinates in an array of [x, y]
 def findObject(name, x, y, map)
 #	puts map[x][y].identify
@@ -412,7 +437,8 @@ def gameloop (playerx, playery, map, player)
                 end
                 recognized = true
         end
-
+	abort if input.eql? "exit"
+	
 	if input.include? "pick up"
 		obj = input[input.index("pick up")+8..input.length]
 		coords = findObject(obj, playerx, playery, map)
