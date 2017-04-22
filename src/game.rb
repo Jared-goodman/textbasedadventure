@@ -67,6 +67,7 @@ class Door < Item
 	def open
 		@opened = true
 		puts "The door has been opened."
+		return nil
 	end
 
 	def close
@@ -99,6 +100,60 @@ class Wall < Item
 		return false
 	end
 end
+class Chest < Item
+	def initialize(items)
+		@items = items
+		@identifier = "a chest"
+		@name = "chest"
+	end
+
+	def printItems
+		puts "The chest contains:"
+		for x in 0..@items.length-1
+			puts "Item " + (x+1).to_s + ": " + @items[x].identify
+		end
+	end
+	
+	def takeItem(x)
+		temp = @items[x]
+		@items.delete_at(x)
+#		puts "In takeitem method. Taking " + temp.identify
+#		puts @items[x].identify
+		return temp
+	end
+
+	def open
+		return privateOpen([])
+	end
+
+	def privateOpen(ar)
+		chars = "1234567890"
+                printItems
+                puts "Select an item or type \"close\" to close the chest."
+                input = gets.chomp
+                if input.eql? "close"
+                       # puts "In close block. First item of ar is " + ar[0].identify
+                        return ar
+               end
+                for x in input.chars
+                        if not chars.include? x
+                                puts "Error! Please type a number."
+                                return privateOpen(ar)
+                        end
+                end
+                parsed = input.to_i-1
+                ar.push(takeItem(parsed))
+	#	puts "just ran ar.push; ar[0] is now " + ar[0].identify
+	#	if ar.length == 2
+	#		puts ar[1].identify
+	#	else
+	#		puts "len != 2"
+	#	end
+                toReturn = privateOpen(ar)
+	#	puts toReturn[0].identify
+		return toReturn
+	end
+end
 
 #Trivia question for monster bonus attack.
 class Question
@@ -124,6 +179,19 @@ class Question
 	def getChecked
 		return @checked
 	end
+end
+
+class Note < Item
+        def initialize(message)
+                @message = message
+                @name = "note"
+                @identifier = "a note that says \"" + @message + "\""
+        end
+
+        def read
+                puts "The note reads, \"" + @message + "\""
+        end
+
 end
 
 class Monster < Item
@@ -238,7 +306,6 @@ def getnum(inventory)
 	end
 	return input
 end
-
 #Battles monster m with player p. Returns 0 if monster won, returns 1 if player won.
 def battleLoop (m, p, round)
 	puts "Your health: " + p.getHealth.to_s + " Monster health: " + m.getHealth.to_s
@@ -280,6 +347,7 @@ def battleLoop (m, p, round)
 	return battleLoop(m, p, round + 1)
 	
 end 
+#The following comment is so that I can do ^W in nano and find this spot quickly : asdg
 playerx = 10
 playery = 1
 MAP_HEIGHT = 20
@@ -290,11 +358,13 @@ x = 0
 y = 0
 
 player = Player.new
-map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! There is a sign two units south of you. To move, type \"move \"south\". When you are close enough to see the sign, read it.", "steve")
+map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! Instructions are in the chest directly to the east of you. You don't need to move to it because you are close enough. Take out the note.", "steve")
 map[10][3] = Sign.new("Good job! Can you open the door behind this sign?")
 map[10][7] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a sharp rock directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
 map[11][6] = Tool.new("rock", "a rock", 3)
-
+note = Note.new("There is a sign two units south of you. To move, type \"move\" and then the direction you want to go (north, south, east, or west).")
+ar = [note]
+map[11][1] = Chest.new(ar)
 for i in 0..MAP_WIDTH-1
 #	puts "creating a wall at " + i.to_s
 	map[i][4] = Wall.new
@@ -321,6 +391,15 @@ def findObject(name, x, y, map)
 	return [x, y-1] if map[x][y-1].getName.eql? name
 #	puts "returning nil"
 	return nil
+end
+
+def findObjectFromInventory(name, p)
+	puts "finding \"" + name + "\" from inventory..."
+	for x in 0..p.getInventory.length
+		return x if p.getInventory[x].getName.eql?name
+	end
+
+	return nil	
 end
 
 def findObjectIdentifier(name, x, y, map)
@@ -408,8 +487,12 @@ def gameloop (playerx, playery, map, player)
 	if input.include? "read"
 		obj = input[input.index("read")+5..input.length]
 		coords = findObject(obj, playerx, playery, map)
-		if coords == nil or map[coords[0]][coords[1]].methods.include? "read"
-			puts obj + " either could not be found or doesn't have text. Are you close enough to it?"
+		if coords == nil or not map[coords[0]][coords[1]].methods.include? "read"
+			if findObjectFromInventory(obj, player) == nil or not player.getInventory[findObjectFromInventory(obj, player)].methods.include? "read"
+				puts obj + " either could not be found or doesn't have text. Are you close enough to it?"
+			else
+				player.getInventory[findObjectFromInventory(obj, player)].read
+			end
 		else
 			map[coords[0]][coords[1]].read
 		end
@@ -422,7 +505,15 @@ def gameloop (playerx, playery, map, player)
                 if coords == nil or map[coords[0]][coords[1]].methods.include? "open"
                         puts obj + " either could not be found or opened. Are you close enough to it?"
                 else
-                        map[coords[0]][coords[1]].open
+                        thing = map[coords[0]][coords[1]].open
+			#puts "about to start give loop"
+			if not thing == nil
+			#	puts "starting give loop, first item is " + thing[0].identify
+				for x in thing
+			#		puts "giving player " + x.identify
+					player.give(x)
+				end
+			end 
                 end
                 recognized = true
 	end
