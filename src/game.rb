@@ -8,7 +8,7 @@ class Item
 	def liftable?
 		return false
 	end
-	def passable?
+	def passable?(player)
 		return true
 	end
 	
@@ -60,7 +60,7 @@ class Door < Item
 		@identifier = "a door"
 	end
 	
-	def passable?
+	def passable?(player)
 		return @opened
 	end
 
@@ -85,21 +85,51 @@ class NPC < Item
 
 	def speak
 		puts @dialouge
+w	end
+	
+end
+
+class PowerUp < Item
+	def passable?(p)
+		return true
+	end
+
+	def drink(p)
+	end
+	def liftable?
+		return true
+	end
+end
+
+class JumpBoost < PowerUp
+	
+	def initialize(intensity)
+		@intensity = intensity
+		@name = "jump boost potion"
+		@identifier = "a jump boost potion (level " + @intensity.to_s + " intensity)"
+		#puts "Initialized potion" + self.identify
+	end
+
+	def drink(p)
+		p.jumpBoost(@intensity)
+		puts "You drink the potion. You can now jump " + p.getJump.to_s + " meters high."
 	end
 	
 end
 
 class Wall < Item
-	def initialize
+	def initialize(height)
 		@name = "wall"
-		@identifier = "a wall"
+		@identifier = "a wall that is " + height.to_s + " meters tall" 
+		@height = height
 	end
 
 	
-	def passable?
-		return false
+	def passable?(p)
+		return p.getJump >= @height
 	end
 end
+
 class Chest < Item
 	def initialize(items)
 		@items = items
@@ -244,12 +274,13 @@ class Monster < Item
 
 end
 
+
 #Used only for battling and inventory. Does not show up on map.
 class Player
 	def initialize
 		@inventory = []
 		@hp = 100
-		
+		@jump = 2
 	end
 	def heal(x)
 		@hp = @hp + x
@@ -277,6 +308,16 @@ class Player
 	def getName
 		return "you"
 	end
+
+	def getJump
+		return @jump
+	end
+
+	def jumpBoost(x)
+		@jump = @jump + x
+		return @jump
+	end
+		
 end
 
 def battle (m, p)
@@ -359,16 +400,20 @@ y = 0
 
 player = Player.new
 map[10][1] = NPC.new("Steve says: Hello! Welcome to the game! Instructions are in the chest directly to the east of you. You don't need to move to it because you are close enough. Take out the note.", "steve")
+#puts map[10][1].identify
 map[10][3] = Sign.new("Good job! Can you open the door behind this sign?")
 map[10][7] = Sign.new("Behind the next door is a monster. Battling the monster will automatically start once you get close to it. To help you, there is a sharp rock directly to the east of this sign. Pick it up using the \"Pick up __\" command.")
 map[11][6] = Tool.new("rock", "a rock", 3)
+map[10][9] = JumpBoost.new(5)
+map[12][3] = Wall.new(5)
 note = Note.new("There is a sign two units south of you. To move, type \"move\" and then the direction you want to go (north, south, east, or west).")
 ar = [note]
 map[11][1] = Chest.new(ar)
 for i in 0..MAP_WIDTH-1
 #	puts "creating a wall at " + i.to_s
-	map[i][4] = Wall.new
-	map[i][7] = Wall.new
+	map[i][4] = Wall.new(80)
+	map[i][7] = Wall.new(80)
+	map[i][10] = Wall.new(5)
 end
 map[10][4] = Door.new(false)
 map[10][7] = Door.new(false)
@@ -385,10 +430,10 @@ def findObject(name, x, y, map)
 #		puts y
 		return [x, y]
 	end
-	return [x+1, y] if map[x+1][y].getName.eql? name
-	return [x-1, y] if map[x-1][y].getName.eql? name
-	return [x, y+1] if map[x][y+1].getName.eql? name
-	return [x, y-1] if map[x][y-1].getName.eql? name
+	return [x+1, y] if map[x+1][y].getName.include? name
+	return [x-1, y] if map[x-1][y].getName.include? name
+	return [x, y+1] if map[x][y+1].getName.include? name
+	return [x, y-1] if map[x][y-1].getName.include? name
 #	puts "returning nil"
 	return nil
 end
@@ -396,7 +441,7 @@ end
 def findObjectFromInventory(name, p)
 	puts "finding \"" + name + "\" from inventory..."
 	for x in 0..p.getInventory.length
-		return x if p.getInventory[x].getName.eql?name
+		return x if p.getInventory[x].identify.include?name
 	end
 
 	return nil	
@@ -432,7 +477,7 @@ def gameloop (playerx, playery, map, player)
 #	end
  
 	if input.eql? "move north"
-		if playery != 0 and map[playerx][playery-1].passable?
+		if playery != 0 and map[playerx][playery-1].passable?(player)
 			playery = playery - 1
 			puts "You have moved north." 
 		else
@@ -442,18 +487,18 @@ def gameloop (playerx, playery, map, player)
 		recognized = true
 	end
 	if input.eql? "move south"
-		if playery != MAP_HEIGHT and map[playerx][playery+1].passable?
+		if playery != MAP_HEIGHT and map[playerx][playery+1].passable?(player)
 			playery = playery + 1
 			puts "You have moved south."
 		else
-			puts "You can\'t do that, you are at the top of the map." if playerx == MAP_HEIGHT
+			puts "You can\'t do that, you are at the bottom of the map." if playerx == MAP_HEIGHT
 			puts map[playerx][playery+1].identify + " blocks your path." unless playerx == MAP_HEIGHT
 		end
 		recognized = true
 	end
 
 	if input.eql? "move west"
-		if playerx != 0 and map[playerx-1][playery].passable?
+		if playerx != 0 and map[playerx-1][playery].passable?(player)
 			playerx = playerx - 1
 		else
 			puts "You can\'t do that, you are at the westmost part of the map." if playerx == 0
@@ -546,6 +591,13 @@ def gameloop (playerx, playery, map, player)
 		end
 		recognized = true
 	end
+
+	if input.include? "drink"
+		obj = input[input.index("drink") + 6..input.length]
+		index = findObjectFromInventory(obj, player)
+		player.getInventory[index].drink(player)
+		recognized = true
+	end
 	
 	
 #for debugging:
@@ -575,13 +627,17 @@ def gameloop (playerx, playery, map, player)
 		end
 	end
 	puts "unrecognized command" unless recognized == true
-	puts "You are standing at " + map[playerx][playery].identify unless map[playerx][playery].identify.eql?("nothing")
-	puts "To the north of you there is " + map[playerx][playery-1].identify unless playery == 0 or map[playerx][playery-1].identify.eql?("nothing")
-	puts "To the west of you there is " + map[playerx-1][playery].identify  unless playerx == 0 or map[playerx-1][playery].identify.eql?("nothing") 
-	puts "To the south of you there is " + map[playerx][playery+1].identify unless playery == MAP_HEIGHT or map[playerx][playery+1].identify.eql?("nothing")
-	puts "To the east of you there is " + map[playerx+1][playery].identify unless playerx == MAP_WIDTH or map[playerx+1][playery].identify.eql?("nothing")
-	#puts map
+	look(playerx, playery, map, player)
 	gameloop(playerx, playery, map, player)
 end
 
+def look(playerx, playery, map, player)
+	puts "You are standing at " + map[playerx][playery].identify unless map[playerx][playery].identify.eql?("nothing")
+        puts "To the north of you there is " + map[playerx][playery-1].identify unless playery == 0 or map[playerx][playery-1].identify.eql?("nothing")
+        puts "To the west of you there is " + map[playerx-1][playery].identify  unless playerx == 0 or map[playerx-1][playery].identify.eql?("nothing")
+        puts "To the south of you there is " + map[playerx][playery+1].identify unless playery == MAP_HEIGHT or map[playerx][playery+1].identify.eql?("nothing")
+        puts "To the east of you there is " + map[playerx+1][playery].identify unless playerx == MAP_WIDTH or map[playerx+1][playery].identify.eql?("nothing")
+end
+
+look(playerx, playery, map, player)
 gameloop(playerx, playery, map, player)
