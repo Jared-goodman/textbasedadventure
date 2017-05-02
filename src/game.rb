@@ -85,7 +85,7 @@ class NPC < Item
 
 	def speak
 		puts @dialouge
-w	end
+	end
 	
 end
 
@@ -439,7 +439,7 @@ def findObject(name, x, y, map)
 end
 
 def findObjectFromInventory(name, p)
-	puts "finding \"" + name + "\" from inventory..."
+#	puts "finding \"" + name + "\" from inventory..."
 	for x in 0..p.getInventory.length
 		return x if p.getInventory[x].identify.include?name
 	end
@@ -529,17 +529,23 @@ def gameloop (playerx, playery, map, player)
 		recognized = true
 	end
 
-	if input.include? "read"
+	if(input.include?("read"))
 		obj = input[input.index("read")+5..input.length]
 		coords = findObject(obj, playerx, playery, map)
-		if coords == nil or not map[coords[0]][coords[1]].methods.include? "read"
-			if findObjectFromInventory(obj, player) == nil or not player.getInventory[findObjectFromInventory(obj, player)].methods.include? "read"
-				puts obj + " either could not be found or doesn't have text. Are you close enough to it?"
-			else
-				player.getInventory[findObjectFromInventory(obj, player)].read
-			end
+		if coords == nil
+			puts obj + " could not be found. Are you close enough to it?"
+
 		else
-			map[coords[0]][coords[1]].read
+#			puts "reading sign"
+
+#			puts map[coords[0]][coords[1]].methods.join
+#			puts  map[coords[0]][coords[1]].methods.include?("read")
+
+			if not map[coords[0]][coords[1]].methods.join().include?"read"
+				puts obj + " does not have text."
+			else
+				map[coords[0]][coords[1]].read
+			end
 		end
 		recognized = true
 	end
